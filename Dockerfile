@@ -10,6 +10,10 @@ ENV LANG=C.UTF-8 \
 ENV PATH="/opt/venv/bin:$PATH" \
     VIRTUAL_ENV="/opt/venv"
 
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HEADROOM_TELEMETRY=off
+
 # Install system deps: FFmpeg for audio and video processing.
 RUN apt-get -y update --allow-releaseinfo-change \
     && apt-get -y dist-upgrade \
