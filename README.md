@@ -1,4 +1,4 @@
-# � YouTube Downloader (YT-DL)
+# ⬇️ YouTube Downloader (YT-DL)
 
 **YT-DL** lets you download any public YouTube video as audio (MP3/AAC/OPUS) or video (MP4) at your preferred quality. Just paste a link and click Download — no technical knowledge needed.
 
@@ -194,4 +194,4 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 
 ---
 
-**YT-DL** — *Download YouTube audio and video, simple and clean.* �
+**YT-DL** — *Download YouTube audio and video, simple and clean.* ⬇️
