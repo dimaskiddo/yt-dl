@@ -1,0 +1,51 @@
+[project]
+name = "ytdl-web"
+version = "0.1.0"
+description = "YT-DL - YouTube Downloader (WebUI / API)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "loguru",
+    "pydantic",
+    "pyyaml",
+    "typer",
+    "gradio",
+    "static-ffmpeg",
+    "yt-dlp"
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "pytest>=7.0.0",
+    "mypy>=1.0.0"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ARG"]
+ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument", "gradio.Progress"]
+
+[tool.ruff.lint.per-file-ignores]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true

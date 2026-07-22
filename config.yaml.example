@@ -1,0 +1,33 @@
+# YT-DL Configuration
+# Copy this file to config.yaml and customize.
+
+logging:
+  level: "INFO"             # DEBUG | INFO | WARNING | ERROR
+  log_file: "app.log"
+  rotation: "10 MB"
+  retention: "7 days"
+
+server:
+  host: "127.0.0.1"
+  port: 7860
+
+downloader:
+  mode: "audio"              # audio | video
+  audio_format: "mp3"        # mp3 | aac | opus
+  audio_bitrate: "192K"      # 128K | 192K | 256K | 320K
+  video_resolution: "1080p"  # 360p | 480p | 720p | 1080p | 1440p
+  video_format: "mp4"        # mp4
+  max_attempts: 3            # retry attempts per download (1-10)
+  retry_delay: 2.0           # seconds between retries, exponential backoff (0.5-60.0)
+
+workspace:
+  root: "workspace"
+
+cleaner:
+  scheduler:
+    enabled: true            # enable/disable background purge scheduler
+    interval_hours: 1        # hours between purge cycles (1-168)
+  retention:
+    audio_days: 7            # days before auto-purge. 0 = immediate, -1 = never purge
+    video_days: 7
+    tmp_days: 1

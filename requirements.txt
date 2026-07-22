@@ -1,0 +1,10 @@
+pip
+setuptools
+wheel
+loguru
+pydantic
+pyyaml
+typer
+gradio
+static-ffmpeg
+yt-dlp
