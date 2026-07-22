@@ -1,16 +1,14 @@
 FROM python:3.11-slim-bookworm
-MAINTAINER Dimas Restu Hidayanto <drh.dimasrestu@gmail.com>
 
-LABEL maintainer="Dimas Restu Hidayanto <drh.dimasrestu@gmail.com>"
+WORKDIR /usr/app
 
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     TZ=Asia/Jakarta \
-    HOME=/
+    DEBIAN_FRONTEND=noninteractive
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-WORKDIR /usr/app
+ENV PATH="/opt/venv/bin:$PATH" \
+    VIRTUAL_ENV="/opt/venv"
 
 # Install system deps: FFmpeg for audio and video processing.
 RUN apt-get -y update --allow-releaseinfo-change \
@@ -21,24 +19,37 @@ RUN apt-get -y update --allow-releaseinfo-change \
     && apt-get -y clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency manifest first (Docker layer caching).
+# Create non-root user.
+RUN groupadd \
+      --gid 1000 \
+      user \
+    && useradd \
+        --no-create-home \
+        --uid 1000 \
+        --gid 1000 \
+        -d /usr/app \
+        -s /usr/sbin/nologin \
+        user
+
+# Copy only dependency manifest first (Docker layer caching).
 COPY requirements.txt .
 
-# Install packages directly into system Python.
-RUN pip3 install --no-cache-dir --break-system-packages --upgrade \
-        pip \
-        setuptools \
-        wheel \
-    && pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+# Install packages into venv.
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application.
-COPY . .
+COPY --chown=user:user . .
 
 # Persistent workspace: audios, videos, bin, logs survive container restarts.
 VOLUME /usr/app/workspace
 
 # Expose Gradio WebUI port.
 EXPOSE 7860
+
+# Set user as non-root user.
+USER user
 
 # Default: serve the WebUI (override via CLI args: `download <url>`, `cache purge`, etc.).
 # The workspace auto-initialises on first boot (FFmpeg, dirs).
