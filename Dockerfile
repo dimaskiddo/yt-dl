@@ -45,6 +45,9 @@ import static_ffmpeg; \
 d = os.path.join(os.path.dirname(static_ffmpeg.__file__), 'bin', 'linux'); \
 os.makedirs(d, mode=0o777, exist_ok=True);"
 
+# Copy the rest of the application.
+COPY . .
+
 # Persistent workspace: audios, videos, bin, logs survive container restarts.
 VOLUME /usr/app/workspace
 
