@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 # Distribution / Packaging
+.git
 .Python
 env/
 build/

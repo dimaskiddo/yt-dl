@@ -230,7 +230,7 @@ async def _download_video(
             if result.video_title
             else result.video_id
         )
-        progress(1.0, desc=f"Done — {title} ({size})")
+        progress(1.0, desc=f"Download Complete")
         gr.Success("Download Complete", duration=5)
 
         preview_path, session_id = _create_serve_path(

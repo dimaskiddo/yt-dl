@@ -39,8 +39,11 @@ RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
     && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application.
-COPY --chown=user:user . .
+RUN /opt/venv/bin/python3 -c "\
+import os; \
+import static_ffmpeg; \
+d = os.path.join(os.path.dirname(static_ffmpeg.__file__), 'bin', 'linux'); \
+os.makedirs(d, mode=0o777, exist_ok=True);"
 
 # Persistent workspace: audios, videos, bin, logs survive container restarts.
 VOLUME /usr/app/workspace

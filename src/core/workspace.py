@@ -368,8 +368,8 @@ def check_binary(name: str, bin_dir: Path) -> bool:
 def ensure_ffmpeg(bin_dir: Path) -> Path:
     """Ensure ffmpeg (and ffprobe) exist in bin_dir.
 
-    Uses the static-ffmpeg PyPI package to download platform-appropriate binaries.
-    Lets static_ffmpeg download to its default cache, then copies to bin_dir.
+    Tries to download platform-appropriate binaries via static-ffmpeg.
+    Falls back to copying system ffmpeg/ffprobe if download fails.
 
     Args:
         bin_dir: Target directory for ffmpeg/ffprobe.
@@ -378,9 +378,10 @@ def ensure_ffmpeg(bin_dir: Path) -> Path:
         Path to ffmpeg binary.
 
     Logs:
-        Warning on failure (not fatal — system ffmpeg may be available).
+        Warning on failure (not fatal).
     """
     ffmpeg_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+    ffprobe_name = "ffprobe.exe" if os.name == "nt" else "ffprobe"
     ffmpeg_path = bin_dir / ffmpeg_name
 
     if check_binary("ffmpeg", bin_dir):
@@ -394,9 +395,17 @@ def ensure_ffmpeg(bin_dir: Path) -> Path:
         ffmpeg_exe, ffprobe_exe = get_or_fetch_platform_executables_else_raise()
         shutil.copy(ffmpeg_exe, bin_dir)
         shutil.copy(ffprobe_exe, bin_dir)
-        logger.info("Downloaded video processing tools")
+        logger.info("Downloaded video processing tools...")
     except Exception:
-        logger.warning("Could not download ffmpeg — using system ffmpeg")
+        system_ffmpeg = shutil.which("ffmpeg")
+        if system_ffmpeg:
+            shutil.copy(system_ffmpeg, bin_dir / ffmpeg_name)
+            system_ffprobe = shutil.which("ffprobe")
+            if system_ffprobe:
+                shutil.copy(system_ffprobe, bin_dir / ffprobe_name)
+            logger.info("Copied system ffmpeg to workspace/bin")
+        else:
+            logger.warning("FFmpeg not found on system")
 
     return ffmpeg_path
 
