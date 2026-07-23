@@ -73,8 +73,8 @@ Build a clean, robust, and low-spec optimized YouTube Downloader application. Du
 - Guard: `ACTIVE_DOWNLOAD_EVENT` skips purge during active downloads.
 
 ### Binaries
-- FFmpeg: downloaded via `static_ffmpeg` PyPI package to `workspace/bin/`.
-- Bun: downloaded from GitHub releases (platform-specific zip) to `workspace/bin/`.
+- FFmpeg: downloaded via `static_ffmpeg` PyPI package to `workspace/bin/`. Fallback: symlinks system ffmpeg/ffprobe (tracks OS package updates).
+- Bun: downloaded from GitHub releases (platform-specific zip) to `workspace/bin/`. Auto-detects musl libc (Alpine) — downloads `-musl` variant for compatibility.
 - Both prepend to `PATH` via `setup_environment()`.
 
 ---

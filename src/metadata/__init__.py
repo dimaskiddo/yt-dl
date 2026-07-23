@@ -105,6 +105,7 @@ def inject_metadata(
     ydl_info: dict[str, object],
     audio_format: str,
     config: MetadataConfig,
+    log_path: str = "",
 ) -> None:
     """Extract, enrich, and inject ID3 tags into audio file. Non-fatal."""
     from src.metadata.tagger import tag_audio_file
@@ -126,6 +127,6 @@ def inject_metadata(
     _resolve_cover(meta, ydl_info, config, online_cover_url)
     try:
         tag_audio_file(file_path, meta, audio_format)
-        logger.info("ID3 tags written for {}", file_path.name)
+        logger.info("Writing metadata tags for {}", log_path)
     except Exception:
-        logger.warning("Failed to write ID3 tags for {}", file_path.name)
+        logger.warning("Failed to write metadata tags for {}", log_path)

@@ -202,6 +202,7 @@ class VideoDownloader:
         """
         staging_dir = WORKSPACE_TMP / video_id
         staging_dir.mkdir(parents=True, exist_ok=True)
+        log_path = str(output_path.relative_to(Path("workspace")))
 
         try:
             target_res = parse_resolution_height(request.video_resolution)
@@ -242,6 +243,7 @@ class VideoDownloader:
                     ydl_info,
                     request.audio_format,
                     self.config.metadata,
+                    log_path,
                 )
             except Exception as e:
                 logger.warning(

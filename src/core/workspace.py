@@ -362,7 +362,22 @@ def check_binary(name: str, bin_dir: Path) -> bool:
         True if binary exists and is a file.
     """
     exe = name + (".exe" if os.name == "nt" else "")
-    return (bin_dir / exe).is_file()
+    path = bin_dir / exe
+    return path.is_file() and not path.is_symlink()
+
+
+def _link_or_replace(src: Path, dst: Path) -> None:
+    """Create/replace a symlink at dst pointing to src.
+
+    Removes dst first if it exists (file, dir, or broken symlink).
+
+    Args:
+        src: Target the symlink should point to.
+        dst: Symlink path to create.
+    """
+    if dst.is_symlink() or dst.exists():
+        dst.unlink()
+    os.symlink(str(src), str(dst))
 
 
 def ensure_ffmpeg(bin_dir: Path) -> Path:
@@ -399,11 +414,11 @@ def ensure_ffmpeg(bin_dir: Path) -> Path:
     except Exception:
         system_ffmpeg = shutil.which("ffmpeg")
         if system_ffmpeg:
-            shutil.copy(system_ffmpeg, bin_dir / ffmpeg_name)
+            _link_or_replace(Path(system_ffmpeg), bin_dir / ffmpeg_name)
             system_ffprobe = shutil.which("ffprobe")
             if system_ffprobe:
-                shutil.copy(system_ffprobe, bin_dir / ffprobe_name)
-            logger.info("Copied system ffmpeg to workspace/bin")
+                _link_or_replace(Path(system_ffprobe), bin_dir / ffprobe_name)
+            logger.info("Linked system ffmpeg into workspace/bin")
         else:
             logger.warning("FFmpeg not found on system")
 
@@ -466,9 +481,17 @@ def _download_bun(bun_path: Path, exe_name: str) -> None:
     system = platform.system().lower()
     machine = platform.machine().lower()
     arch = "aarch64" if machine in ("arm64", "aarch64") else "x64"
+
+    variant = ""
+    if system == "linux":
+        import glob as _glob
+
+        if any(_glob.glob("/lib/ld-musl-*.so*")):
+            variant = "-musl"
+
     url = (
         "https://github.com/oven-sh/bun/releases/latest/download/"
-        f"bun-{system}-{arch}.zip"
+        f"bun-{system}-{arch}{variant}.zip"
     )
 
     logger.info("Downloading JavaScript runtime...")

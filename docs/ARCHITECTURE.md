@@ -74,7 +74,7 @@ All runtime assets in `./workspace/`. OS temp dirs (`/tmp/`, `%TEMP%`) never use
 | `tmp/` | Download staging + Gradio temp files |
 | `logs/` | Rotating loguru logs (`app.log`) |
 
-**Boot:** `init_workspace()` creates all dirs. `ensure_ffmpeg()` + `ensure_bun()` download missing binaries. `setup_environment()` prepends `workspace/bin/` to PATH.
+**Boot:** `init_workspace()` creates all dirs. `ensure_ffmpeg()` downloads via static_ffmpeg (fallback: symlinks system ffmpeg/ffprobe). `ensure_bun()` downloads from GitHub — auto-detects musl libc (Alpine) for `-musl` variant. `setup_environment()` prepends `workspace/bin/` to PATH.
 
 **Purge:** Hourly background thread via `start_purge_scheduler()`. Retention: `audio_days` / `video_days` / `tmp_days` from config (`0` = immediate, `-1` = skip). Protected: `bin/`, `logs/`. Guard: `ACTIVE_DOWNLOAD_EVENT` skips purge during active downloads.
 
@@ -131,20 +131,25 @@ All downloads stage in `workspace/tmp/{VIDEO_ID}/` first. After processing, fina
 ```mermaid
 flowchart TD
     Start([App startup]) --> CheckFFmpeg{"ffmpeg in<br/>workspace/bin/?"}
-    CheckFFmpeg -- "yes" --> CheckBun
-    CheckFFmpeg -- "no" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy to workspace/bin/"]
-    DLFFmpeg --> CheckBun
+    CheckFFmpeg -- "yes, real file" --> CheckBun
+    CheckFFmpeg -- "no / symlink only" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy to workspace/bin/"]
+    DLFFmpeg -- "success" --> CheckBun
+    DLFFmpeg -- "fail" --> LinkSys["Symlink system ffmpeg/ffprobe<br/>_link_or_replace()"]
+    LinkSys --> CheckBun
 
     CheckBun{"bun in<br/>workspace/bin/?"}
-    CheckBun -- "yes" --> SetupPath
-    CheckBun -- "no" --> DLBun["Download from GitHub releases<br/>extract to workspace/bin/"]
+    CheckBun -- "yes, real file" --> SetupPath
+    CheckBun -- "no" --> DetectMusl{"musl libc?<br/>(Alpine)"}
+    DetectMusl -- "yes" --> DLBunMusl["Download bun-linux-*-musl.zip<br/>from GitHub releases"]
+    DetectMusl -- "no" --> DLBun["Download bun-linux-*.zip<br/>from GitHub releases"]
+    DLBunMusl --> SetupPath
     DLBun --> SetupPath
 
     SetupPath["Prepend workspace/bin/ to PATH<br/>via setup_environment()"]
     SetupPath --> Ready([Binaries ready])
 ```
 
-FFmpeg: downloaded via `static_ffmpeg` PyPI package. Bun: downloaded from GitHub releases (platform-specific zip). Both live in `workspace/bin/`.
+FFmpeg: downloaded via `static_ffmpeg` PyPI package. Fallback: symlinks system ffmpeg/ffprobe (tracks OS package updates). Bun: downloaded from GitHub releases (platform-specific zip). Auto-detects musl libc — downloads `-musl` variant on Alpine. Both live in `workspace/bin/`.
 
 ---
 

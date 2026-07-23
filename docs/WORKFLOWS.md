@@ -52,7 +52,8 @@ flowchart TD
 ### 1. Boot (`src/core/workspace.py`)
 
 - Create missing `workspace/` dirs via `init_workspace()`.
-- Auto-download FFmpeg (via `static_ffmpeg` PyPI) and Bun (GitHub releases) if missing.
+- Auto-download FFmpeg (via `static_ffmpeg` PyPI). Falls back to symlinking system ffmpeg/ffprobe via `_link_or_replace()`.
+- Auto-download Bun from GitHub releases (platform-specific zip). Auto-detects musl libc on Alpine — downloads `-musl` variant.
 - Inject `workspace/bin` into PATH via `setup_environment()`.
 - Register cleanup hooks (`atexit` + signal handlers) and hourly purge scheduler.
 
@@ -156,13 +157,18 @@ Retention: `audio_days` / `video_days` / `tmp_days` from `config.yaml` (`0` = im
 ```mermaid
 flowchart TD
     Start([App startup]) --> CheckFFmpeg{"ffmpeg in<br/>workspace/bin/?"}
-    CheckFFmpeg -- "yes" --> CheckBun
-    CheckFFmpeg -- "no" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy ffmpeg + ffprobe to workspace/bin/"]
-    DLFFmpeg --> CheckBun
+    CheckFFmpeg -- "yes, real file" --> CheckBun
+    CheckFFmpeg -- "no / symlink only" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy to workspace/bin/"]
+    DLFFmpeg -- "success" --> CheckBun
+    DLFFmpeg -- "fail" --> LinkSys["Symlink system ffmpeg/ffprobe<br/>_link_or_replace()"]
+    LinkSys --> CheckBun
 
     CheckBun{"bun in<br/>workspace/bin/?"}
-    CheckBun -- "yes" --> PATH
-    CheckBun -- "no" --> DLBun["Download from GitHub releases<br/>platform zip → extract to workspace/bin/"]
+    CheckBun -- "yes, real file" --> PATH
+    CheckBun -- "no" --> DetectMusl{"musl libc?<br/>(Alpine)"}
+    DetectMusl -- "yes" --> DLBunMusl["Download bun-linux-*-musl.zip<br/>from GitHub releases"]
+    DetectMusl -- "no" --> DLBun["Download bun-linux-*.zip<br/>from GitHub releases"]
+    DLBunMusl --> PATH
     DLBun --> PATH
 
     PATH["Prepend workspace/bin/ to PATH<br/>via setup_environment()"]
