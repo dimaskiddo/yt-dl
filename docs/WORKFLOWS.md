@@ -34,11 +34,12 @@ flowchart TD
         Merge --> Copy["FFmpeg stream copy<br/>(no re-encode)"]
     end
 
-    Encode --> Move["Move to final output<br/>workspace/audios/ or videos/"]
+    Encode --> Tag["3c. Inject ID3 (audio only)<br/>yt-dlp metadata → online search enrichment<br/>cover art (yt-dlp thumbnail / provider / default)<br/>mutagen ID3v2.4 / MP4 / VorbisComment"]
+    Tag --> Move
     Copy --> Move
 
     subgraph S4["4. Cleanup"]
-        Move --> Cleanup["Remove staging dir<br/>workspace/tmp/{VIDEO_ID}/"]
+        Move["Move to final output<br/>workspace/audios/ or videos/"] --> Cleanup["Remove staging dir<br/>workspace/tmp/{VIDEO_ID}/"]
     end
 
     Cleanup --> Done([Complete])
@@ -92,7 +93,8 @@ flowchart TD
     Extract --> Ytdl["yt-dlp download<br/>format: bestaudio[ext=m4a]/bestaudio/best<br/>(fast — no video downloaded)"]
     Ytdl --> Staging["workspace/tmp/{VIDEO_ID}/source.{ext}"]
     Staging --> Encode["FFmpeg re-encode<br/>codec: libmp3lame / aac / libopus<br/>bitrate: 128K / 192K / 256K / 320K"]
-    Encode --> Output["workspace/audios/{VIDEO_ID}/{BITRATE}.{format}"]
+    Encode --> Tag["inject_metadata()<br/>yt-dlp metadata → online search enrichment<br/>cover art (yt-dlp thumbnail / provider / default)<br/>mutagen ID3v2.4 / MP4 / VorbisComment"]
+    Tag --> Output["workspace/audios/{VIDEO_ID}/{BITRATE}.{format}"]
     Output --> Cleanup["Remove staging dir"]
     Cleanup --> Done([Complete])
 ```

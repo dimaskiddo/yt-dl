@@ -24,6 +24,17 @@ graph LR
         FFmpeg["ffmpeg_processor.py"]
     end
 
+    subgraph metadata["src/metadata/"]
+        YDL["ydl.py"]
+        Cover["cover.py"]
+        Tagger["tagger.py"]
+        Utils["utils.py"]
+        Spotify["spotify.py"]
+        Itunes["itunes.py"]
+        MusicBrainz["musicbrainz.py"]
+        Lastfm["lastfm.py"]
+    end
+
     subgraph interfaces["src/interfaces/"]
         CLIApp["cli/app.py"]
         CLICmds["cli/commands/"]
@@ -40,6 +51,7 @@ graph LR
 
     Downloader --> FFmpeg
     Downloader --> YtdlConfig
+    Downloader --> YDL
 
     CLIApp --> CLICmds
     CLICmds --> Downloader
@@ -78,6 +90,7 @@ Single `config.yaml` at project root. Pydantic validated at startup. Full refere
 | `server` | `src/core/config.py` | Gradio host, port |
 | `downloader` | `src/downloader/downloader.py` | Mode, format, bitrate, resolution, retry |
 | `workspace` | `src/core/workspace.py` | Workspace root path |
+| `metadata` | `src/metadata/__init__.py` | ID3 tag injection, online search, provider auth, cover config |
 | `cleaner` | `src/core/workspace.py` | Purge scheduler + retention (audio/video/tmp days) |
 
 **Singleton pattern:** `load_config()` loads YAML, validates via Pydantic, caches as module-level singleton. `get_config()` returns cached config. First run: copies `config.yaml.example` → `config.yaml`.
@@ -95,7 +108,8 @@ flowchart TD
     Download --> Mode{Mode?}
 
     Mode -- "audio" --> Encode["encode_audio()<br/>FFmpeg re-encode to target format/bitrate"]
-    Encode --> MoveAudio["Move → workspace/audios/{VIDEO_ID}/{BITRATE}.{format}"]
+    Encode --> Tag["inject_metadata()<br/>ID3 tags via mutagen<br/>yt-dlp metadata + online search + cover art"]
+    Tag --> MoveAudio["Move → workspace/audios/{VIDEO_ID}/{BITRATE}.{format}"]
 
     Mode -- "video" --> StreamCopy["stream_copy_video()<br/>FFmpeg stream copy (no re-encode)"]
     StreamCopy --> MoveVideo["Move → workspace/videos/{VIDEO_ID}/{RESOLUTION}.mp4"]
@@ -186,6 +200,7 @@ YTDownloaderError
   ├── ConfigValidationError    (config.yaml invalid/missing)
   ├── DownloadError            (yt-dlp or processing failure)
   ├── FFmpegError              (FFmpeg encoding failure)
+  ├── MetadataError            (metadata injection or online search failure)
   └── InvalidURLError          (YouTube URL unparseable)
 ```
 

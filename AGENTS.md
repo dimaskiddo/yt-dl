@@ -31,9 +31,9 @@ Build a clean, robust, and low-spec optimized YouTube Downloader application. Du
   *Example:* `workspace/audios/AKS7Y8P/192K.aac`
 
 ### 2. Video Mode
-- **Resolution Options:** `360p`, `480p`, `720p`, `1080p`, `1440p` (Default: `1080p`).
+- **Resolution Options:** `360p`, `480p`, `720p`, `1080p`, `1440p` (Default: `720p`).
 - **Format Options:** `MP4` (Default).
-- **Quality Strategy:** yt-dlp downloads best video+audio and merges automatically. FFmpeg re-encodes video (libx264) to target resolution.
+- **Quality Strategy:** yt-dlp downloads best video+audio and merges automatically. FFmpeg stream copies (no re-encode, zero quality loss).
 - **Output Directory Structure:** `workspace/videos/{VIDEO_ID_UPPERCASE}/{RESOLUTION_UPPERCASE}.{format}`
   *Example:* `workspace/videos/AKS7Y8P/1080P.mp4`
 
@@ -126,6 +126,7 @@ ytdl-web/
 ├── src/
 │   ├── core/                 # config, constants, exceptions, environment, logger, utils, workspace
 │   ├── downloader/           # yt_dlp_config, downloader, ffmpeg_processor
+│   ├── metadata/             # ydl, cover, tagger, utils + providers (spotify, itunes, musicbrainz, lastfm)
 │   └── interfaces/
 │       ├── cli/              # app.py + commands/{download,config,cache,serve}.py
 │       └── webui/            # app.py + components.py + tabs/{downloader,about}.py
@@ -158,3 +159,4 @@ ytdl-web/
 | `src/downloader/ffmpeg_processor.py` | FFmpeg subprocess wrapper |
 | `src/interfaces/cli/` | Typer CLI entry point and command modules |
 | `src/interfaces/webui/` | Gradio WebUI entry point and tab modules |
+| `src/metadata/` | Metadata extraction, online search (Spotify, MusicBrainz, iTunes, Last.fm), cover art, ID3 tag injection |

@@ -10,6 +10,7 @@ It works on **Windows, macOS, Linux, and WSL2**, and is built to run well even o
 
 *   **📦 Self-contained — no extra software to install manually:** Auto-downloads everything it needs (video tools, JavaScript runtime) into its own folder on first run. Nothing installed system-wide.
 *   **🎵 Audio or Video — your choice:** Download audio-only (MP3, AAC, OPUS) at 128K–320K, or full video (MP4) at 360p–1440p.
+*   **🏷️ Automatic ID3 tags:** Audio downloads get title, artist, album, year, and cover art injected automatically. Metadata sourced from yt-dlp + online search (Spotify, MusicBrainz, iTunes, Last.fm).
 *   **💻 Two ways to use it:** A browser-based interface or terminal commands.
 *   **🧹 Automatic cleanup:** Hourly background purge deletes expired downloads. Manual cache controls available.
 *   **⚡ Fast — downloads only what you need:** Audio mode skips the video stream entirely. Video mode uses best-quality source + stream copy (no re-encode, zero quality loss).
@@ -24,7 +25,8 @@ It works on **Windows, macOS, Linux, and WSL2**, and is built to run well even o
 2. **Choose mode** — Audio (MP3/AAC/OPUS) or Video (MP4)
 3. **Pick quality** — bitrate for audio, resolution for video
 4. **Download** — yt-dlp handles the download, FFmpeg processes the output
-5. **Done** — file saved to `workspace/audios/` or `workspace/videos/`
+5. **Auto-tag** — audio files get ID3 tags + cover art from yt-dlp + online search (configurable)
+6. **Done** — file saved to `workspace/audios/` or `workspace/videos/`
 
 ```mermaid
 graph TD
@@ -234,6 +236,8 @@ python app.py config                # print validated settings
 *   [Loguru](https://github.com/Delgan/loguru) — application logging
 *   [Typer](https://typer.tiangolo.com/) — CLI framework
 *   [Pydantic](https://docs.pydantic.dev/) — configuration validation
+*   [mutagen](https://mutagen.readthedocs.io/) — ID3/MP4/Vorbis tag writing
+*   [Pillow](https://python-pillow.org/) — cover image resize
 
 ---
 

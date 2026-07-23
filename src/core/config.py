@@ -157,9 +157,9 @@ class CleanerSchedulerConfig(BaseModel):
 class CleanerRetentionConfig(BaseModel):
     """Per-directory cache retention. 0 = immediate, -1 = never purge."""
 
-    audio_days: int = Field(default=7)
-    video_days: int = Field(default=7)
-    tmp_days: int = Field(default=1)
+    audio_days: int = Field(default=3)
+    video_days: int = Field(default=3)
+    tmp_days: int = Field(default=0)
 
     @field_validator("audio_days", "video_days", "tmp_days")
     @classmethod
