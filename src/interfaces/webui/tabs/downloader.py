@@ -10,7 +10,7 @@ import gradio as gr
 
 from src.core.config import AppConfig, get_config
 from src.core.constants import GRADIO_TEMP_DIR, WORKSPACE_TMP
-from src.core.utils import format_bytes, sanitize_filename, validate_youtube_url
+from src.core.utils import sanitize_filename, validate_youtube_url
 from src.downloader.downloader import DownloadRequest, VideoDownloader
 from src.interfaces.webui.components import (
     AUDIO_BITRATE_CHOICES,
@@ -155,7 +155,7 @@ def _build_success_updates(preview_path: str, mode: str, session_id: str) -> tup
     )
 
 
-def _build_error_updates(error: Exception) -> tuple:
+def _build_error_updates(_error: Exception) -> tuple:
     """Build UI updates for failed download.
 
     Args:
@@ -173,7 +173,9 @@ def _build_error_updates(error: Exception) -> tuple:
         gr.update(value=None),  # preview_audio
         gr.update(value=None),  # preview_video
         gr.update(visible=False, elem_classes=[]),  # preview_panel
-        gr.update(visible=False),  # error_box (kept hidden — errors shown via gr.Warning toast)
+        gr.update(
+            visible=False
+        ),  # error_box (kept hidden — errors shown via gr.Warning toast)
         gr.update(visible=False),  # new_download_btn
         gr.update(interactive=True),  # force_checkbox
         gr.update(value=""),  # session_input
@@ -222,15 +224,12 @@ async def _download_video(
         progress(0.6, desc="Downloading...")
         result = await asyncio.to_thread(downloader.download, request, force=force)
 
-        size = format_bytes(
-            result.output_path.stat().st_size if result.output_path.exists() else 0
-        )
         title = (
             sanitize_filename(result.video_title)
             if result.video_title
             else result.video_id
         )
-        progress(1.0, desc=f"Download Complete")
+        progress(1.0, desc="Download Complete")
         gr.Success("Download Complete", duration=5)
 
         preview_path, session_id = _create_serve_path(

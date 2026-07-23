@@ -5,15 +5,20 @@ from __future__ import annotations
 import ipaddress
 from urllib.parse import parse_qs, urlparse
 
-from src.core.constants import MAX_URL_LENGTH, YT_DOMAINS, YT_ID_PATTERN
+from src.core.constants import (
+    MAX_URL_LENGTH,
+    YT_DOMAIN_SUFFIXES,
+    YT_ID_PATTERN,
+    YT_PATH_REGEX,
+)
 from src.core.exceptions import InvalidURLError
 
 
 def validate_youtube_url(url: str) -> str:
     """Validate and sanitize a YouTube URL against SSRF and invalid input.
 
-    Rejects empty/blank URLs, non-http schemes, unknown domains,
-    raw IP addresses, and overly long URLs.
+    Checks scheme, hostname against YouTube domain suffixes, and verifies
+    the URL path/query contains recognizable YouTube video patterns.
 
     Args:
         url: Raw URL string from user input.
@@ -32,6 +37,10 @@ def validate_youtube_url(url: str) -> str:
     if len(cleaned) > MAX_URL_LENGTH:
         raise InvalidURLError(f"URL exceeds maximum length ({MAX_URL_LENGTH} chars)")
 
+    # Naked video ID (11-char alphanumeric) — pass through directly
+    if YT_ID_PATTERN.match(cleaned):
+        return cleaned
+
     # Prepend https:// if scheme missing (urlparse needs it for hostname)
     if "://" not in cleaned:
         cleaned = "https://" + cleaned
@@ -43,8 +52,18 @@ def validate_youtube_url(url: str) -> str:
     if scheme not in ("http", "https"):
         raise InvalidURLError(f"URL scheme '{scheme}' is not allowed")
 
+    # Upgrade http:// to https://
+    if scheme == "http":
+        cleaned = cleaned.replace("http://", "https://", 1)
+        scheme = "https"
+
     if not hostname:
         raise InvalidURLError("URL has no hostname")
+
+    # Normalize: strip www. prefix from hostname
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
+        cleaned = cleaned.replace("://www.", "://", 1)
 
     # Reject raw IP addresses
     try:
@@ -53,9 +72,15 @@ def validate_youtube_url(url: str) -> str:
     except ValueError:
         pass  # Not an IP — good, continue
 
-    # Strict domain allowlist
-    if hostname not in YT_DOMAINS:
+    # Check hostname against YouTube domain suffixes (matches subdomains)
+    if not _is_youtube_domain(hostname):
         raise InvalidURLError(f"Domain '{hostname}' is not a recognized YouTube domain")
+
+    # Check that URL path/query contains recognizable YouTube video patterns
+    if not _has_youtube_path(parsed):
+        raise InvalidURLError(
+            f"URL path does not match a known YouTube video format: {parsed.path or '/'}"
+        )
 
     return cleaned
 
@@ -126,6 +151,47 @@ def _extract_from_url(parsed: object) -> str | None:
 def _valid_id(video_id: str) -> bool:
     """Check if a string is a valid YouTube video ID."""
     return bool(YT_ID_PATTERN.match(video_id))
+
+
+def _is_youtube_domain(hostname: str) -> bool:
+    """Check if hostname is a YouTube domain or subdomain.
+
+    Args:
+        hostname: Lowercase hostname from URL.
+
+    Returns:
+        True if hostname matches a known YouTube domain suffix.
+    """
+    hostname = hostname.lower()
+    return any(
+        hostname == suffix or hostname.endswith("." + suffix)
+        for suffix in YT_DOMAIN_SUFFIXES
+    )
+
+
+def _has_youtube_path(parsed: object) -> bool:
+    """Check if URL path or query contains a recognizable YouTube video pattern.
+
+    Args:
+        parsed: Parsed URL object from urlparse().
+
+    Returns:
+        True if path or query matches known YouTube video URL patterns.
+    """
+    path = getattr(parsed, "path", "") or ""
+    query = getattr(parsed, "query", "") or ""
+    hostname = (getattr(parsed, "hostname", None) or "").lower()
+
+    # youtu.be has no path prefix — the path IS the video ID
+    if "youtu.be" in hostname:
+        return True
+
+    # Recognizable path patterns: /watch, /v/, /embed/, /e/, /shorts/, /live/
+    if YT_PATH_REGEX.search(path):
+        return True
+
+    # Has v= query parameter (YouTube-style)
+    return "v=" in query
 
 
 def parse_resolution_height(resolution: str) -> int:

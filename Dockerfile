@@ -39,15 +39,19 @@ RUN groupadd \
 COPY requirements.txt .
 
 # Install packages into venv.
-RUN python3 -m venv /opt/venv \
+RUN PYTHON_MAIN_VERSION=`echo "${PYTHON_VERSION#*=}" | cut -d. -f1,2` \
+    && python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
-
-RUN /opt/venv/bin/python3 -c "\
-import os; \
-import static_ffmpeg; \
-d = os.path.join(os.path.dirname(static_ffmpeg.__file__), 'bin', 'linux'); \
-os.makedirs(d, mode=0o777, exist_ok=True);"
+    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt \
+    && mkdir -p \
+        /opt/venv//lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
+        /usr/app/.cache \
+    && chown -R user:user \
+        /opt/venv//lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
+        /usr/app/.cache \
+    && chmod 777 \
+        /opt/venv//lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
+        /usr/app/.cache
 
 # Copy the rest of the application.
 COPY . .

@@ -14,7 +14,7 @@ from src.core.config import AppConfig
 from src.core.constants import WORKSPACE_TMP
 from src.core.exceptions import DownloadError
 from src.core.utils import extract_video_id, parse_resolution_height
-from src.downloader.ffmpeg_processor import encode_audio, encode_video
+from src.downloader.ffmpeg_processor import encode_audio, stream_copy_video
 from src.downloader.yt_dlp_config import build_ytdl_options
 
 
@@ -364,13 +364,11 @@ class VideoDownloader:
                 video_id=video_id,
             )
         else:
-            encode_video(
+            stream_copy_video(
                 input_path=source,
                 output_path=staging_output,
-                resolution_height=parse_resolution_height(request.video_resolution),
                 ffmpeg_path=ffmpeg_path,
                 video_id=video_id,
-                video_format=request.video_format,
             )
 
     def _resolve_ffmpeg_path(self) -> str:

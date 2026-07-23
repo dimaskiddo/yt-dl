@@ -28,44 +28,6 @@ def _build_audio_codec_args(audio_format: str, bitrate: str) -> list[str]:
     return codec_map.get(audio_format, ["-c:a", "copy"])
 
 
-def _build_video_cmd(
-    input_path: Path,
-    output_path: Path,
-    resolution_height: int,
-    ffmpeg_path: str,
-) -> list[str]:
-    """Build FFmpeg video encoding command.
-
-    Args:
-        input_path: Source file path.
-        output_path: Target video file path.
-        resolution_height: Target resolution height in pixels.
-        ffmpeg_path: Path to ffmpeg binary.
-
-    Returns:
-        Complete FFmpeg command list.
-    """
-    return [
-        ffmpeg_path,
-        "-y",
-        "-i",
-        str(input_path),
-        "-c:v",
-        "libx264",
-        "-crf",
-        "23",
-        "-preset",
-        "medium",
-        "-vf",
-        f"scale=-2:{resolution_height}",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        str(output_path),
-    ]
-
-
 def encode_audio(
     input_path: Path,
     output_path: Path,
@@ -113,41 +75,44 @@ def encode_audio(
     return output_path
 
 
-def encode_video(
+def stream_copy_video(
     input_path: Path,
     output_path: Path,
-    resolution_height: int,
     ffmpeg_path: str,
     video_id: str = "",
-    video_format: str = "mp4",
     timeout: int = 3600,
 ) -> Path:
-    """Re-encode video for better compression at same quality.
+    """Remux video without re-encoding using stream copy.
 
-    Uses H.264 CRF encoding for efficient file size while maintaining quality.
+    Copies video and audio streams as-is into target container.
+    No quality loss, near-zero CPU usage.
 
     Args:
         input_path: Source file path.
         output_path: Target video file path.
-        resolution_height: Target resolution height in pixels (e.g. 1080).
         ffmpeg_path: Path to ffmpeg binary.
         video_id: YouTube video ID for log context.
-        video_format: Target video format (e.g. "mp4").
         timeout: Timeout in seconds.
 
     Returns:
-        Path to encoded video file.
+        Path to remuxed video file.
 
     Raises:
         FFmpegError: If FFmpeg fails.
     """
-    cmd = _build_video_cmd(input_path, output_path, resolution_height, ffmpeg_path)
+    cmd = [
+        ffmpeg_path,
+        "-y",
+        "-i",
+        str(input_path),
+        "-c",
+        "copy",
+        str(output_path),
+    ]
 
     logger.info(
-        "Encoding video for {} to {} {}p...",
+        "Stream copying video for {} (no re-encode)...",
         video_id.upper(),
-        video_format.upper(),
-        resolution_height,
     )
     _run_ffmpeg(cmd, timeout)
     return output_path

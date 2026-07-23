@@ -15,7 +15,7 @@ downloader:
   mode: "audio"              # audio | video
   audio_format: "mp3"        # mp3 | aac | opus
   audio_bitrate: "192K"      # 128K | 192K | 256K | 320K
-  video_resolution: "1080p"  # 360p | 480p | 720p | 1080p | 1440p
+  video_resolution: "720p"   # 360p | 480p | 720p | 1080p | 1440p
   video_format: "mp4"        # mp4
   max_attempts: 3            # retry attempts per download (1-10)
   retry_delay: 2.0           # seconds between retries, exponential backoff (0.5-60.0)
