@@ -20,7 +20,7 @@ It works on **Windows, macOS, Linux, and WSL2**, and is built to run well even o
 
 ## 🎬 How It Works
 
-1. **Paste URL** — enter any public YouTube link (www stripped, http upgraded to https)
+1. **Paste URL** — enter any public YouTube link
 2. **Choose mode** — Audio (MP3/AAC/OPUS) or Video (MP4)
 3. **Pick quality** — bitrate for audio, resolution for video
 4. **Download** — yt-dlp handles the download, FFmpeg processes the output
