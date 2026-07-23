@@ -63,6 +63,13 @@ YT_DOMAIN_SUFFIXES: frozenset[str] = frozenset(
     }
 )
 
+# HTTP User-Agent (Microsoft Edge)
+USER_AGENT: str = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    " AppleWebKit/537.36 (KHTML, like Gecko)"
+    " Chrome/150.0.0.0 Safari/537.36 Edg/150.0.4078.83"
+)
+
 # Valid URI path patterns that indicate a YouTube video URL.
 # Each pattern is matched against the path component of the URL.
 YT_PATH_REGEX: re.Pattern[str] = re.compile(

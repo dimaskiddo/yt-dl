@@ -9,6 +9,7 @@ import urllib.request
 
 from loguru import logger
 
+from src.core.constants import USER_AGENT
 from src.metadata.utils import _http_get_json
 
 
@@ -24,6 +25,7 @@ def _spotify_auth(
             headers={
                 "Authorization": f"Basic {auth}",
                 "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": USER_AGENT,
             },
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:

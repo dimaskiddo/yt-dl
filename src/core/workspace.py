@@ -17,7 +17,12 @@ from pathlib import Path
 from loguru import logger
 
 from src.core.config import AppConfig
-from src.core.constants import GRADIO_TEMP_DIR, WORKSPACE_ROOT, WORKSPACE_TMP
+from src.core.constants import (
+    GRADIO_TEMP_DIR,
+    USER_AGENT,
+    WORKSPACE_ROOT,
+    WORKSPACE_TMP,
+)
 
 # Guard flag: skip purge during active downloads
 ACTIVE_DOWNLOAD_EVENT = threading.Event()
@@ -363,41 +368,30 @@ def check_binary(name: str, bin_dir: Path) -> bool:
     """
     exe = name + (".exe" if os.name == "nt" else "")
     path = bin_dir / exe
-    return path.is_file() and not path.is_symlink()
-
-
-def _link_or_replace(src: Path, dst: Path) -> None:
-    """Create/replace a symlink at dst pointing to src.
-
-    Removes dst first if it exists (file, dir, or broken symlink).
-
-    Args:
-        src: Target the symlink should point to.
-        dst: Symlink path to create.
-    """
-    if dst.is_symlink() or dst.exists():
-        dst.unlink()
-    os.symlink(str(src), str(dst))
+    return path.is_file()
 
 
 def ensure_ffmpeg(bin_dir: Path) -> Path:
-    """Ensure ffmpeg (and ffprobe) exist in bin_dir.
+    """Ensure ffmpeg (and ffprobe) are available.
 
-    Tries to download platform-appropriate binaries via static-ffmpeg.
-    Falls back to copying system ffmpeg/ffprobe if download fails.
+    Tries static_ffmpeg download first. Falls back to system ffmpeg
+    from PATH — no symlinks, no copies.
 
     Args:
-        bin_dir: Target directory for ffmpeg/ffprobe.
+        bin_dir: Target directory for static_ffmpeg binaries.
 
     Returns:
-        Path to ffmpeg binary.
-
-    Logs:
-        Warning on failure (not fatal).
+        Path to ffmpeg binary (may be outside bin_dir via system fallback).
     """
     ffmpeg_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
-    ffprobe_name = "ffprobe.exe" if os.name == "nt" else "ffprobe"
+
+    # Clean up stale symlinks from old code (volume migration)
     ffmpeg_path = bin_dir / ffmpeg_name
+    if ffmpeg_path.is_symlink():
+        ffmpeg_path.unlink()
+    ffprobe_path = bin_dir / ("ffprobe.exe" if os.name == "nt" else "ffprobe")
+    if ffprobe_path.is_symlink():
+        ffprobe_path.unlink()
 
     if check_binary("ffmpeg", bin_dir):
         return ffmpeg_path
@@ -411,18 +405,39 @@ def ensure_ffmpeg(bin_dir: Path) -> Path:
         shutil.copy(ffmpeg_exe, bin_dir)
         shutil.copy(ffprobe_exe, bin_dir)
         logger.info("Downloaded video processing tools...")
+        return bin_dir / ffmpeg_name
     except Exception:
         system_ffmpeg = shutil.which("ffmpeg")
         if system_ffmpeg:
-            _link_or_replace(Path(system_ffmpeg), bin_dir / ffmpeg_name)
-            system_ffprobe = shutil.which("ffprobe")
-            if system_ffprobe:
-                _link_or_replace(Path(system_ffprobe), bin_dir / ffprobe_name)
-            logger.info("Linked system ffmpeg into workspace/bin")
-        else:
-            logger.warning("FFmpeg not found on system")
+            logger.info("Using system ffmpeg at {}", system_ffmpeg)
+            return Path(system_ffmpeg)
+        logger.warning("FFmpeg not found on system")
+        return bin_dir / ffmpeg_name
 
-    return ffmpeg_path
+
+def get_ffmpeg_path(bin_dir: Path) -> Path | None:
+    """Resolve ffmpeg binary path dynamically.
+
+    Prefers real file in workspace/bin (static_ffmpeg download).
+    Falls back to system ffmpeg via PATH lookup.
+
+    Args:
+        bin_dir: Directory that may contain static_ffmpeg binaries.
+
+    Returns:
+        Path to ffmpeg binary, or None if not found.
+    """
+    name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+
+    candidate = bin_dir / name
+    if candidate.is_file():
+        return candidate
+
+    system_ffmpeg = shutil.which("ffmpeg")
+    if system_ffmpeg:
+        return Path(system_ffmpeg)
+
+    return None
 
 
 def ensure_bun(bin_dir: Path) -> Path:
@@ -497,7 +512,7 @@ def _download_bun(bun_path: Path, exe_name: str) -> None:
     logger.info("Downloading JavaScript runtime...")
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "YT-DL"})
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=120) as resp:
             zip_data = resp.read()
 

@@ -7,11 +7,7 @@ import urllib.request
 
 from loguru import logger
 
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    " AppleWebKit/537.36 (KHTML, like Gecko)"
-    " Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0"
-)
+from src.core.constants import USER_AGENT
 
 
 def _http_get_json(
@@ -27,7 +23,7 @@ def _http_get_json(
     Returns:
         Parsed JSON dict, or None on any error.
     """
-    req_headers: dict[str, str] = {"User-Agent": _UA}
+    req_headers: dict[str, str] = {"User-Agent": USER_AGENT}
     if headers:
         req_headers.update(headers)
 
@@ -51,7 +47,7 @@ def _http_get_bytes(url: str, timeout: float) -> tuple[bytes, str] | None:
         Tuple of (bytes, mime string), or None on any error.
     """
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": _UA})
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.read(), resp.headers.get("Content-Type", "")
     except Exception:

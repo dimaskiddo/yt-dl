@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import time
 from pathlib import Path
@@ -14,6 +13,7 @@ from src.core.config import AppConfig
 from src.core.constants import WORKSPACE_TMP
 from src.core.exceptions import DownloadError
 from src.core.utils import extract_video_id, parse_resolution_height
+from src.core.workspace import get_ffmpeg_path
 from src.downloader.ffmpeg_processor import encode_audio, stream_copy_video
 from src.downloader.yt_dlp_config import build_ytdl_options
 
@@ -211,6 +211,7 @@ class VideoDownloader:
                 target_res=target_res,
                 video_format=request.video_format,
                 output_dir=staging_dir,
+                bin_dir=self.config.workspace.bin,
             )
             ydl_info = self._download_with_retry(
                 request.url, opts, video_id=video_id, mode=request.mode
@@ -385,7 +386,12 @@ class VideoDownloader:
             request: Download request.
             video_id: YouTube video ID for log context.
         """
-        ffmpeg_path = self._resolve_ffmpeg_path()
+        ffmpeg = get_ffmpeg_path(self.config.workspace.bin)
+        if ffmpeg is None:
+            raise DownloadError(
+                "FFmpeg not found — install ffmpeg to process media files"
+            )
+        ffmpeg_path = str(ffmpeg)
         staging_output = staging_dir / output.name
 
         if request.mode == "audio":
@@ -404,15 +410,6 @@ class VideoDownloader:
                 ffmpeg_path=ffmpeg_path,
                 video_id=video_id,
             )
-
-    def _resolve_ffmpeg_path(self) -> str:
-        """Resolve the FFmpeg binary path from workspace config.
-
-        Returns:
-            Path to FFmpeg binary as string.
-        """
-        name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
-        return str(Path(self.config.workspace.bin) / name)
 
     def _cleanup_tmp(self, staging_dir: Path) -> None:
         """Clean up staging directory.

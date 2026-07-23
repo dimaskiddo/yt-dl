@@ -6,7 +6,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from src.core.constants import WORKSPACE_BIN
+from src.core.constants import USER_AGENT
+from src.core.workspace import get_ffmpeg_path
 
 
 class YTDLLogger:
@@ -60,6 +61,7 @@ def build_ytdl_options(
     target_res: int,
     video_format: str,
     output_dir: Path,
+    bin_dir: Path,
 ) -> dict[str, object]:
     """Build complete yt-dlp options dict.
 
@@ -68,6 +70,7 @@ def build_ytdl_options(
         target_res: Target resolution height (e.g. 1080).
         video_format: Video container (mp4).
         output_dir: Directory for temporary downloads.
+        bin_dir: Directory containing ffmpeg binary (workspace/bin).
 
     Returns:
         Dict of yt-dlp options.
@@ -79,6 +82,7 @@ def build_ytdl_options(
 
     return {
         "format": format_string,
+        "http_headers": {"User-Agent": USER_AGENT},
         "merge_output_format": video_format,
         "outtmpl": str(output_dir / "source.%(ext)s"),
         "quiet": True,
@@ -88,5 +92,9 @@ def build_ytdl_options(
         "remote_components": ["ejs:github"],
         "extractor_args": {"youtube": ["player_client=ios,android,web"]},
         "overwrites": True,
-        "ffmpeg_location": str(WORKSPACE_BIN),
+        "ffmpeg_location": str(
+            get_ffmpeg_path(bin_dir).parent
+            if get_ffmpeg_path(bin_dir)
+            else bin_dir
+        ),
     }
