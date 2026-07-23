@@ -19,5 +19,9 @@ class FFmpegError(YTDownloaderError):
     """Raised when FFmpeg encoding or merging fails."""
 
 
+class MetadataError(YTDownloaderError):
+    """Raised when metadata injection or online search fails."""
+
+
 class InvalidURLError(YTDownloaderError):
     """Raised when a YouTube URL cannot be parsed or is invalid."""

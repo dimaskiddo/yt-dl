@@ -11,7 +11,8 @@ dependencies = [
     "typer",
     "gradio",
     "static-ffmpeg",
-    "yt-dlp"
+    "yt-dlp",
+    "mutagen",
 ]
 
 [project.optional-dependencies]

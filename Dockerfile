@@ -1,11 +1,10 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.11-alpine
 
 WORKDIR /usr/app
 
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    TZ=Asia/Jakarta \
-    DEBIAN_FRONTEND=noninteractive
+    TZ=Asia/Jakarta
 
 ENV PATH="/opt/venv/bin:$PATH" \
     VIRTUAL_ENV="/opt/venv"
@@ -15,24 +14,21 @@ ENV PYTHONUNBUFFERED=1 \
     HEADROOM_TELEMETRY=off
 
 # Install system deps: FFmpeg for audio and video processing.
-RUN apt-get -y update --allow-releaseinfo-change \
-    && apt-get -y dist-upgrade \
-    && apt-get -y install --no-install-recommends \
-        ffmpeg \
-    && apt-get -y purge --autoremove \
-    && apt-get -y clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk upgrade --no-cache --update \
+    && apk add --no-cache --update \
+        ffmpeg
 
 # Create non-root user.
-RUN groupadd \
-      --gid 1000 \
+RUN addgroup \
+      -S \
+      -g 1000 \
       user \
-    && useradd \
-        --no-create-home \
-        --uid 1000 \
-        --gid 1000 \
-        -d /usr/app \
-        -s /usr/sbin/nologin \
+    && adduser \
+        -S \
+        -h /usr/app \
+        -s /sbin/nologin \
+        -u 1000 \
+        -G user \
         user
 
 # Copy only dependency manifest first (Docker layer caching).
@@ -44,13 +40,13 @@ RUN PYTHON_MAIN_VERSION=`echo "${PYTHON_VERSION#*=}" | cut -d. -f1,2` \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
     && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt \
     && mkdir -p \
-        /opt/venv//lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
+        /opt/venv/lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
         /usr/app/.cache \
     && chown -R user:user \
-        /opt/venv//lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
+        /opt/venv/lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
         /usr/app/.cache \
-    && chmod 777 \
-        /opt/venv//lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
+    && chmod -R 777 \
+        /opt/venv/lib/python${PYTHON_MAIN_VERSION}/site-packages/static_ffmpeg/bin \
         /usr/app/.cache
 
 # Copy the rest of the application.

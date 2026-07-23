@@ -76,6 +76,40 @@ class DownloaderConfig(BaseModel):
         return v
 
 
+class ProviderConfig(BaseModel):
+    """Per-provider authentication settings."""
+
+    api_key: str = Field(default="")
+    api_secret: str = Field(default="")
+    client_id: str = Field(default="")
+    client_secret: str = Field(default="")
+
+
+class MetadataProvidersConfig(BaseModel):
+    """Authentication for each search provider."""
+
+    spotify: ProviderConfig = Field(default_factory=ProviderConfig)
+    lastfm: ProviderConfig = Field(default_factory=ProviderConfig)
+    itunes: ProviderConfig = Field(default_factory=ProviderConfig)
+    musicbrainz: ProviderConfig = Field(default_factory=ProviderConfig)
+
+
+class MetadataConfig(BaseModel):
+    """ID3 tag metadata injection settings."""
+
+    enabled: bool = Field(default=True)
+    online_search: bool = Field(default=True)
+    online_timeout: float = Field(default=3.0, ge=1.0, le=10.0)
+    default_cover_path: str = Field(default="public/default-album-cover.jpg")
+    force_default_cover: bool = Field(default=False)
+    provider_order: list[str] = Field(
+        default=["spotify", "musicbrainz", "itunes", "lastfm"]
+    )
+    providers: MetadataProvidersConfig = Field(
+        default_factory=MetadataProvidersConfig
+    )
+
+
 class WorkspaceConfig(BaseModel):
     """Workspace directory paths derived from root."""
 
@@ -173,6 +207,7 @@ class AppConfig(BaseModel):
     cleaner: CleanerConfig = Field(default_factory=CleanerConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    metadata: MetadataConfig = Field(default_factory=MetadataConfig)
 
 
 # Module-level singleton

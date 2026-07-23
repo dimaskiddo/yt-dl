@@ -59,6 +59,11 @@ def download_cmd(
             result.output_path.stat().st_size if result.output_path.exists() else 0
         )
         typer.echo(f"✓ {result.output_path.name} ({size})")
+        if result.metadata:
+            if result.metadata.get("title"):
+                typer.echo(f"   Title : {result.metadata['title']}")
+            if result.metadata.get("artist"):
+                typer.echo(f"   Artist: {result.metadata['artist']}")
     except Exception as e:
         typer.echo("")
         typer.echo(f"✗ {e}", err=True)

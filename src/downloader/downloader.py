@@ -36,6 +36,7 @@ class DownloadResult(BaseModel):
     video_title: str = ""
     output_path: Path
     status: str = "complete"
+    metadata: dict[str, str] = {}
 
 
 # Transient error patterns (download may succeed on retry)
@@ -161,11 +162,23 @@ class VideoDownloader:
             )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        title = self._download_and_process(video_id, output_path, request)
+        title, ydl_info = self._download_and_process(
+            video_id, output_path, request
+        )
+
+        meta_summary: dict[str, str] = {}
+        if request.mode == "audio" and ydl_info:
+            meta_summary = {
+                "title": title,
+                "artist": str(ydl_info.get("uploader", "")),
+            }
 
         logger.info("Files saved to {}", log_path)
         return DownloadResult(
-            video_id=video_id, video_title=title, output_path=output_path
+            video_id=video_id,
+            video_title=title,
+            output_path=output_path,
+            metadata=meta_summary,
         )
 
     def _download_and_process(
@@ -173,7 +186,7 @@ class VideoDownloader:
         video_id: str,
         output_path: Path,
         request: DownloadRequest,
-    ) -> str:
+    ) -> tuple[str, dict[str, object]]:
         """Download, process, and move to final output.
 
         Args:
@@ -182,7 +195,7 @@ class VideoDownloader:
             request: Download request.
 
         Returns:
-            Video title from yt-dlp metadata.
+            Tuple of (video_title, yt-dlp info dict).
 
         Raises:
             DownloadError: If download or processing fails.
@@ -198,9 +211,10 @@ class VideoDownloader:
                 video_format=request.video_format,
                 output_dir=staging_dir,
             )
-            title = self._download_with_retry(
+            ydl_info = self._download_with_retry(
                 request.url, opts, video_id=video_id, mode=request.mode
             )
+            title = ydl_info.get("title", "") if ydl_info else ""
         except Exception as e:
             self._cleanup_tmp(staging_dir)
             raise DownloadError(f"Download failed: {e}") from e
@@ -218,8 +232,26 @@ class VideoDownloader:
             self._cleanup_tmp(staging_dir)
             raise DownloadError(f"Processing failed: {e}") from e
 
+        if request.mode == "audio" and self.config.metadata.enabled:
+            staging_output = staging_dir / output_path.name
+            try:
+                from src.metadata import inject_metadata
+
+                inject_metadata(
+                    staging_output,
+                    ydl_info,
+                    request.audio_format,
+                    self.config.metadata,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Metadata injection failed for {}: {}",
+                    video_id.upper(),
+                    e,
+                )
+
         self._finalize_output(staging_dir, output_path)
-        return title
+        return title, ydl_info
 
     def _finalize_output(
         self,
@@ -257,7 +289,7 @@ class VideoDownloader:
 
     def _download_with_retry(
         self, url: str, opts: dict[str, object], video_id: str = "", mode: str = "video"
-    ) -> str:
+    ) -> dict[str, object]:
         """Download with exponential backoff retry.
 
         Args:
@@ -267,7 +299,7 @@ class VideoDownloader:
             mode: Download mode (audio or video).
 
         Returns:
-            Video title from yt-dlp metadata.
+            Full yt-dlp info dict.
 
         Raises:
             DownloadError: If all retries exhausted or permanent error.
@@ -282,7 +314,7 @@ class VideoDownloader:
             try:
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     info = ydl.extract_info(url, download=True)
-                    return info.get("title", "") if info else ""
+                    return info
             except Exception as e:
                 if attempt == max_attempts or not _is_transient(e):
                     raise DownloadError(f"Download failed: {e}") from e
@@ -296,7 +328,7 @@ class VideoDownloader:
                 )
                 time.sleep(sleep_time)
 
-        return ""
+        raise DownloadError("Download failed: all retries exhausted")
 
     def _find_source(self, staging_dir: Path) -> Path | None:
         """Find the downloaded source file in staging directory.

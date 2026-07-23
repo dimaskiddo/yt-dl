@@ -8,3 +8,4 @@ typer
 gradio
 static-ffmpeg
 yt-dlp
+mutagen

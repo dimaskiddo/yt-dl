@@ -2,7 +2,7 @@
 # Copy this file to config.yaml and customize.
 
 logging:
-  level: "INFO"             # DEBUG | INFO | WARNING | ERROR
+  level: "INFO"                 # DEBUG | INFO | WARNING | ERROR
   log_file: "app.log"
   rotation: "10 MB"
   retention: "7 days"
@@ -12,22 +12,41 @@ server:
   port: 7860
 
 downloader:
-  mode: "audio"              # audio | video
-  audio_format: "mp3"        # mp3 | aac | opus
-  audio_bitrate: "192K"      # 128K | 192K | 256K | 320K
-  video_resolution: "720p"   # 360p | 480p | 720p | 1080p | 1440p
-  video_format: "mp4"        # mp4
-  max_attempts: 3            # retry attempts per download (1-10)
-  retry_delay: 2.0           # seconds between retries, exponential backoff (0.5-60.0)
+  mode: "audio"                 # audio | video
+  audio_format: "mp3"           # mp3 | aac | opus
+  audio_bitrate: "192K"         # 128K | 192K | 256K | 320K
+  video_resolution: "720p"      # 360p | 480p | 720p | 1080p | 1440p
+  video_format: "mp4"           # mp4
+  max_attempts: 3               # retry attempts per download (1-10)
+  retry_delay: 2.0              # seconds between retries, exponential backoff (0.5-60.0)
+
+metadata:
+  enabled: true                 # enable/disable ID3 tag injection
+  online_search: true           # search providers for album/artist metadata
+  online_timeout: 3.0           # seconds total for online search (1.0-10.0)
+  default_cover_path: "public/default-album-cover.jpg"
+  force_default_cover: false    # skip yt-dlp thumbnail, always use default_cover_path
+  provider_order:               # in ordered providers 
+    - "spotify"
+    - "musicbrainz"
+    - "itunes"
+    - "lastfm"
+  providers:
+    spotify:
+      client_id: ""             # from https://developer.spotify.com
+      client_secret: ""         # from https://developer.spotify.com
+    lastfm:
+      api_key: ""               # from https://www.last.fm/api
+      api_secret: ""            # from https://www.last.fm/api
 
 workspace:
   root: "workspace"
 
 cleaner:
   scheduler:
-    enabled: true            # enable/disable background purge scheduler
-    interval_hours: 1        # hours between purge cycles (1-168)
+    enabled: true               # enable/disable background purge scheduler
+    interval_hours: 1           # hours between purge cycles (1-168)
   retention:
-    audio_days: 7            # days before auto-purge. 0 = immediate, -1 = never purge
-    video_days: 7
-    tmp_days: 1
+    audio_days: 3               # days before auto-purge. 0 = immediate, -1 = never purge
+    video_days: 3
+    tmp_days: 0
