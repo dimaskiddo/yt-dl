@@ -97,8 +97,8 @@ flowchart TD
     Mode -- "audio" --> Encode["encode_audio()<br/>FFmpeg re-encode to target format/bitrate"]
     Encode --> MoveAudio["Move → workspace/audios/{VIDEO_ID}/{BITRATE}.{format}"]
 
-    Mode -- "video" --> EncodeVideo["encode_video()<br/>FFmpeg re-encode (libx264) to target resolution"]
-    EncodeVideo --> MoveVideo["Move → workspace/videos/{VIDEO_ID}/{RESOLUTION}.mp4"]
+    Mode -- "video" --> StreamCopy["stream_copy_video()<br/>FFmpeg stream copy (no re-encode)"]
+    StreamCopy --> MoveVideo["Move → workspace/videos/{VIDEO_ID}/{RESOLUTION}.mp4"]
 
     MoveAudio --> Cleanup["Cleanup staging"]
     MoveVideo --> Cleanup
@@ -108,7 +108,7 @@ flowchart TD
 All downloads stage in `workspace/tmp/{VIDEO_ID}/` first. After processing, final output moves to `workspace/audios/` or `workspace/videos/`. Staging cleaned up after each download.
 
 - **Audio:** Downloads `bestaudio` stream only (fast — no video). Re-encodes via FFmpeg to target format/bitrate. Supported: MP3 (`libmp3lame`), AAC (`aac`), OPUS (`libopus`). Default: 192K MP3.
-- **Video:** Downloads `bestvideo+bestaudio`, yt-dlp merges automatically. FFmpeg re-encodes via libx264 with scale filter to target resolution. Resolutions: 360p, 480p, 720p, 1080p (default), 1440p. Format: MP4.
+- **Video:** Downloads `bestvideo+bestaudio`, yt-dlp merges automatically. FFmpeg stream copies (no re-encode, zero quality loss, near-zero CPU). Resolutions: 360p, 480p, 720p (default), 1080p, 1440p. Format: MP4.
 
 ---
 

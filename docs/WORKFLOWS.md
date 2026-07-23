@@ -31,10 +31,11 @@ flowchart TD
 
     subgraph S3B["3b. Video"]
         Mode -- "video" --> Merge["yt-dlp auto-merge<br/>bestvideo + bestaudio"]
+        Merge --> Copy["FFmpeg stream copy<br/>(no re-encode)"]
     end
 
     Encode --> Move["Move to final output<br/>workspace/audios/ or videos/"]
-    Merge --> Move
+    Copy --> Move
 
     subgraph S4["4. Cleanup"]
         Move --> Cleanup["Remove staging dir<br/>workspace/tmp/{VIDEO_ID}/"]
@@ -73,8 +74,8 @@ flowchart TD
 - Bitrates: 128K, 192K (default), 256K, 320K.
 
 **Video:**
-- yt-dlp merges video+audio. FFmpeg re-encodes (libx264 CRF 23, medium preset) with scale filter to target resolution.
-- Resolutions: 360p, 480p, 720p, 1080p (default), 1440p.
+- yt-dlp merges video+audio. FFmpeg stream copies without re-encoding (no quality loss, near-zero CPU).
+- Resolutions: 360p, 480p, 720p (default), 1080p, 1440p.
 
 ### 4. Output & Cleanup
 
@@ -105,7 +106,7 @@ flowchart TD
     URL([YouTube URL]) --> Extract["extract_video_id()"]
     Extract --> Ytdl["yt-dlp download<br/>format: bestvideo[ext=mp4][height<=RES]+bestaudio<br/>(yt-dlp merges automatically via FFmpeg)"]
     Ytdl --> Staging["workspace/tmp/{VIDEO_ID}/source.mp4"]
-    Staging --> Copy["FFmpeg re-encode (libx264)<br/>scale to target resolution"]
+    Staging --> Copy["FFmpeg stream copy<br/>(no re-encode)"]
     Copy --> Output["workspace/videos/{VIDEO_ID}/{RESOLUTION}.mp4"]
     Output --> Cleanup["Remove staging dir"]
     Cleanup --> Done([Complete])

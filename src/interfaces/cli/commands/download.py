@@ -21,7 +21,7 @@ def download_cmd(
         "mp3", "--format", "-f", help="Audio format: mp3, aac, opus"
     ),
     resolution: str = typer.Option(
-        "1080p", "--resolution", "-r", help="Video resolution: 360p-1440p"
+        "720p", "--resolution", "-r", help="Video resolution: 360p-1440p"
     ),
     force: bool = typer.Option(False, "--force", help="Re-download even if cached"),
 ) -> None:

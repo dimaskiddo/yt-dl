@@ -12,7 +12,7 @@ It works on **Windows, macOS, Linux, and WSL2**, and is built to run well even o
 *   **🎵 Audio or Video — your choice:** Download audio-only (MP3, AAC, OPUS) at 128K–320K, or full video (MP4) at 360p–1440p.
 *   **💻 Two ways to use it:** A browser-based interface or terminal commands.
 *   **🧹 Automatic cleanup:** Hourly background purge deletes expired downloads. Manual cache controls available.
-*   **⚡ Fast — downloads only what you need:** Audio mode skips the video stream entirely. Video mode uses best-quality source + FFmpeg re-encode to your target resolution.
+*   **⚡ Fast — downloads only what you need:** Audio mode skips the video stream entirely. Video mode uses best-quality source + stream copy (no re-encode, zero quality loss).
 *   **📁 Portable workspace:** All downloads and tools live inside a single `workspace/` folder. Move it, back it up, or delete it — everything is self-contained.
 *   **⚙️ One settings file:** All options in a single `config.yaml`.
 
@@ -20,7 +20,7 @@ It works on **Windows, macOS, Linux, and WSL2**, and is built to run well even o
 
 ## 🎬 How It Works
 
-1. **Paste URL** — enter any public YouTube link
+1. **Paste URL** — enter any public YouTube link (www stripped, http upgraded to https)
 2. **Choose mode** — Audio (MP3/AAC/OPUS) or Video (MP4)
 3. **Pick quality** — bitrate for audio, resolution for video
 4. **Download** — yt-dlp handles the download, FFmpeg processes the output
@@ -123,6 +123,61 @@ Everything works with defaults. Edit `config.yaml` to change download quality, r
 
 ---
 
+## 🐳 Docker
+
+Pre-built image available at `dimaskiddo/yt-dl:latest`.
+
+```bash
+docker pull dimaskiddo/yt-dl:latest
+```
+
+**Run WebUI (default):**
+
+```bash
+docker run -d \
+  --name yt-dl \
+  -p 7860:7860 \
+  -v "$(pwd)/workspace:/usr/app/workspace" \
+  dimaskiddo/yt-dl:latest
+```
+
+**Run CLI commands:**
+
+```bash
+# Download audio
+docker run --rm \
+  -v "$(pwd)/workspace:/usr/app/workspace" \
+  dimaskiddo/yt-dl:latest download "https://www.youtube.com/watch?v=<id>" -m audio
+
+# Cache status
+docker run --rm \
+  -v "$(pwd)/workspace:/usr/app/workspace" \
+  dimaskiddo/yt-dl:latest cache status
+```
+
+**Compose (recommended):**
+
+```yaml
+# docker-compose.yml
+services:
+  yt-dl:
+    image: dimaskiddo/yt-dl:latest
+    container_name: yt-dl
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./workspace:/usr/app/workspace
+    restart: unless-stopped
+```
+
+```bash
+docker compose up -d
+```
+
+> **Note:** The `workspace` volume is persistent — all downloads, binaries, and logs survive container restarts. Open `http://127.0.0.1:7860` in your browser.
+
+---
+
 ## 🕹️ How to Use YT-DL
 
 ### 🌐 Browser Interface
@@ -150,7 +205,7 @@ python app.py download "https://www.youtube.com/watch?v=<id>"
 | `--mode` / `-m` | `audio` or `video` | `audio` |
 | `--audio-bitrate` / `-b` | Audio bitrate | `192K` |
 | `--audio-format` / `-f` | Audio format (`mp3`, `aac`, `opus`) | `mp3` |
-| `--video-resolution` / `-r` | Video resolution | `1080p` |
+| `--video-resolution` / `-r` | Video resolution | `720p` |
 | `--force` | Re-download even if cached | off |
 
 **Other commands:**
