@@ -13,9 +13,7 @@ from src.core.constants import USER_AGENT
 from src.metadata.utils import _http_get_json
 
 
-def _spotify_auth(
-    client_id: str, client_secret: str, timeout: float
-) -> str | None:
+def _spotify_auth(client_id: str, client_secret: str, timeout: float) -> str | None:
     """Obtain Spotify access token via Client Credentials flow."""
     try:
         auth = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
@@ -51,7 +49,9 @@ def spotify_search(
         return None
     query = urllib.parse.quote(f"track:{title} artist:{artist}")
     url = f"https://api.spotify.com/v1/search?q={query}&type=track&limit=1"
-    data = _http_get_json(url, timeout / 2, headers={"Authorization": f"Bearer {access_token}"})
+    data = _http_get_json(
+        url, timeout / 2, headers={"Authorization": f"Bearer {access_token}"}
+    )
     if not data:
         return None
     tracks = data.get("tracks", {}).get("items", [])

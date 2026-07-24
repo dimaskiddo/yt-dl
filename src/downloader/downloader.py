@@ -13,7 +13,7 @@ from src.core.config import AppConfig
 from src.core.constants import WORKSPACE_TMP
 from src.core.exceptions import DownloadError
 from src.core.utils import extract_video_id, parse_resolution_height
-from src.core.workspace import get_ffmpeg_path
+from src.core.workspace import ACTIVE_DOWNLOAD_EVENT, get_ffmpeg_path
 from src.downloader.ffmpeg_processor import encode_audio, stream_copy_video
 from src.downloader.yt_dlp_config import build_ytdl_options
 
@@ -162,9 +162,7 @@ class VideoDownloader:
             )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        title, ydl_info = self._download_and_process(
-            video_id, output_path, request
-        )
+        title, ydl_info = self._download_and_process(video_id, output_path, request)
 
         meta_summary: dict[str, str] = {}
         if request.mode == "audio" and ydl_info:
@@ -204,57 +202,63 @@ class VideoDownloader:
         staging_dir.mkdir(parents=True, exist_ok=True)
         log_path = str(output_path.relative_to(Path("workspace")))
 
+        ACTIVE_DOWNLOAD_EVENT.set()
         try:
-            target_res = parse_resolution_height(request.video_resolution)
-            opts = build_ytdl_options(
-                mode=request.mode,
-                target_res=target_res,
-                video_format=request.video_format,
-                output_dir=staging_dir,
-                bin_dir=self.config.workspace.bin,
-            )
-            ydl_info = self._download_with_retry(
-                request.url, opts, video_id=video_id, mode=request.mode
-            )
-            title = ydl_info.get("title", "") if ydl_info else ""
-        except Exception as e:
-            self._cleanup_tmp(staging_dir)
-            raise DownloadError(f"Download failed: {e}") from e
-
-        source = self._find_source(staging_dir)
-        if not source:
-            self._cleanup_tmp(staging_dir)
-            raise DownloadError("Download completed but source file not found")
-
-        self._source_path = source
-
-        try:
-            self._process_source(source, staging_dir, output_path, request, video_id)
-        except Exception as e:
-            self._cleanup_tmp(staging_dir)
-            raise DownloadError(f"Processing failed: {e}") from e
-
-        if request.mode == "audio" and self.config.metadata.enabled:
-            staging_output = staging_dir / output_path.name
             try:
-                from src.metadata import inject_metadata
+                target_res = parse_resolution_height(request.video_resolution)
+                opts = build_ytdl_options(
+                    mode=request.mode,
+                    target_res=target_res,
+                    video_format=request.video_format,
+                    output_dir=staging_dir,
+                    bin_dir=self.config.workspace.bin,
+                )
+                ydl_info = self._download_with_retry(
+                    request.url, opts, video_id=video_id, mode=request.mode
+                )
+                title = ydl_info.get("title", "") if ydl_info else ""
+            except Exception as e:
+                self._cleanup_tmp(staging_dir)
+                raise DownloadError(f"Download failed: {e}") from e
 
-                inject_metadata(
-                    staging_output,
-                    ydl_info,
-                    request.audio_format,
-                    self.config.metadata,
-                    log_path,
+            source = self._find_source(staging_dir)
+            if not source:
+                self._cleanup_tmp(staging_dir)
+                raise DownloadError("Download completed but source file not found")
+
+            self._source_path = source
+
+            try:
+                self._process_source(
+                    source, staging_dir, output_path, request, video_id
                 )
             except Exception as e:
-                logger.warning(
-                    "Metadata injection failed for {}: {}",
-                    video_id.upper(),
-                    e,
-                )
+                self._cleanup_tmp(staging_dir)
+                raise DownloadError(f"Processing failed: {e}") from e
 
-        self._finalize_output(staging_dir, output_path)
-        return title, ydl_info
+            if request.mode == "audio" and self.config.metadata.enabled:
+                staging_output = staging_dir / output_path.name
+                try:
+                    from src.metadata import inject_metadata
+
+                    inject_metadata(
+                        staging_output,
+                        ydl_info,
+                        request.audio_format,
+                        self.config.metadata,
+                        log_path,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Metadata injection failed for {}: {}",
+                        video_id.upper(),
+                        e,
+                    )
+
+            self._finalize_output(staging_dir, output_path)
+            return title, ydl_info
+        finally:
+            ACTIVE_DOWNLOAD_EVENT.clear()
 
     def _finalize_output(
         self,
@@ -266,11 +270,18 @@ class VideoDownloader:
         Args:
             staging_dir: Staging directory containing processed file.
             output_path: Final output path.
+
+        Raises:
+            DownloadError: If processed file not found in staging.
         """
         final = self._find_final(staging_dir, output_path)
-        if final and final != output_path:
+        if final is None:
+            self._cleanup_tmp(staging_dir)
+            raise DownloadError(
+                f"FFmpeg output not found in staging — expected {output_path.name}"
+            )
+        if final != output_path:
             shutil.move(str(final), str(output_path))
-
         self._cleanup_tmp(staging_dir)
 
     def _build_output_path(self, video_id: str, request: DownloadRequest) -> Path:
@@ -409,6 +420,11 @@ class VideoDownloader:
                 output_path=staging_output,
                 ffmpeg_path=ffmpeg_path,
                 video_id=video_id,
+            )
+
+        if not staging_output.is_file():
+            raise DownloadError(
+                f"FFmpeg completed but output file not found: {staging_output.name}"
             )
 
     def _cleanup_tmp(self, staging_dir: Path) -> None:

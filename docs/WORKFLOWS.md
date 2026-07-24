@@ -31,7 +31,7 @@ flowchart TD
 
     subgraph S3B["3b. Video"]
         Mode -- "video" --> Merge["yt-dlp auto-merge<br/>bestvideo + bestaudio"]
-        Merge --> Copy["FFmpeg stream copy<br/>(no re-encode)"]
+        Merge --> Copy["FFmpeg stream copy"]
     end
 
     Encode --> Tag["3c. Inject ID3 (audio only)<br/>yt-dlp metadata → online search enrichment<br/>cover art (yt-dlp thumbnail / provider / default)<br/>mutagen ID3v2.4 / MP4 / VorbisComment"]
@@ -52,7 +52,7 @@ flowchart TD
 ### 1. Boot (`src/core/workspace.py`)
 
 - Create missing `workspace/` dirs via `init_workspace()`.
-- Auto-download FFmpeg (via `static_ffmpeg` PyPI). Falls back to symlinking system ffmpeg/ffprobe via `_link_or_replace()`.
+- Auto-download FFmpeg (via `static_ffmpeg` PyPI). Falls back to system PATH via `shutil.which()`.
 - Auto-download Bun from GitHub releases (platform-specific zip). Auto-detects musl libc on Alpine — downloads `-musl` variant.
 - Inject `workspace/bin` into PATH via `setup_environment()`.
 - Register cleanup hooks (`atexit` + signal handlers) and hourly purge scheduler.
@@ -63,6 +63,7 @@ flowchart TD
 - Build yt-dlp options via `build_ytdl_options()` — format selection, player client spoofing, bun JS runtime.
 - Download with retry (exponential backoff, transient error classification).
 - Source file lands in `workspace/tmp/{VIDEO_ID}/`.
+- `ACTIVE_DOWNLOAD_EVENT` set during entire download+process cycle — blocks purge scheduler.
 
 **Audio mode:** `bestaudio[ext=m4a]/bestaudio/best` — downloads audio stream only, no video. Fast.
 
@@ -76,8 +77,12 @@ flowchart TD
 - Bitrates: 128K, 192K (default), 256K, 320K.
 
 **Video:**
-- yt-dlp merges video+audio. FFmpeg stream copies without re-encoding (no quality loss, near-zero CPU).
+- yt-dlp merges video+audio. FFmpeg stream copies (zero quality loss, near-zero CPU).
 - Resolutions: 360p, 480p, 720p (default), 1080p, 1440p.
+
+**Output verification:**
+- After FFmpeg completes, output file existence is verified on disk.
+- `_finalize_output` raises `DownloadError` if processed output not found in staging — prevents silent retry loops.
 
 ### 4. Output & Cleanup
 
@@ -109,7 +114,7 @@ flowchart TD
     URL([YouTube URL]) --> Extract["extract_video_id()"]
     Extract --> Ytdl["yt-dlp download<br/>format: bestvideo[ext=mp4][height<=RES]+bestaudio<br/>(yt-dlp merges automatically via FFmpeg)"]
     Ytdl --> Staging["workspace/tmp/{VIDEO_ID}/source.mp4"]
-    Staging --> Copy["FFmpeg stream copy<br/>(no re-encode)"]
+    Staging --> Copy["FFmpeg stream copy"]
     Copy --> Output["workspace/videos/{VIDEO_ID}/{RESOLUTION}.mp4"]
     Output --> Cleanup["Remove staging dir"]
     Cleanup --> Done([Complete])
@@ -138,17 +143,24 @@ flowchart TD
 
     Scheduler --> Active["Downloads accumulate<br/>workspace/audios/ + videos/"]
     Active --> Purge{"Purge check<br/>(hourly)"}
-    Purge -- "active download" --> Skip["Skip (guard flag set)"]
+    Purge -- "active download" --> Skip["Skip (ACTIVE_DOWNLOAD_EVENT)"]
     Skip --> Active
-    Purge -- "idle" --> CheckAge{"Oldest file > retention days?"}
-    CheckAge -- "yes" --> Delete["Delete entire video dir"]
-    CheckAge -- "no" --> Active
-    Delete --> Active
+    Purge -- "no active download" --> Targets{"Purge targets"}
+    Targets --> CheckAgeAud{"audios — Oldest file<br/>> retention days?"}
+    Targets --> CheckAgeVid{"videos — Oldest file<br/>> retention days?"}
+    Targets --> PurgeGradio["tmp/gradio/ — delete media files"]
+    Targets --> PurgeServe["tmp/serve/ — delete media files"]
+    CheckAgeAud -- "yes" --> DeleteAudio["Delete audio dir"]
+    CheckAgeVid -- "yes" --> DeleteVideo["Delete video dir"]
+    CheckAgeAud -- "no" --> Active
+    CheckAgeVid -- "no" --> Active
+    DeleteAudio --> Active
+    DeleteVideo --> Active
 
     Shutdown(["Shutdown"]) --> FinalCleanup["atexit handler<br/>cleanup_tmp()"]
 ```
 
-Retention: `audio_days` / `video_days` / `tmp_days` from `config.yaml` (`0` = immediate, `-1` = skip). Protected dirs (never purged): `bin/`, `logs/`.
+Retention: `audio_days` / `video_days` / `tmp_days` from `config.yaml` (`0` = immediate, `-1` = skip). Purge targets: `audios/` and `videos/` (by age), `tmp/gradio/` and `tmp/serve/` (by age). Staging dirs (`tmp/{VIDEO_ID}/`) are never purged. Protected dirs (never purged): `bin/`, `logs/`.
 
 ---
 
@@ -158,10 +170,10 @@ Retention: `audio_days` / `video_days` / `tmp_days` from `config.yaml` (`0` = im
 flowchart TD
     Start([App startup]) --> CheckFFmpeg{"ffmpeg in<br/>workspace/bin/?"}
     CheckFFmpeg -- "yes, real file" --> CheckBun
-    CheckFFmpeg -- "no / symlink only" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy to workspace/bin/"]
+    CheckFFmpeg -- "no" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy to workspace/bin/"]
     DLFFmpeg -- "success" --> CheckBun
-    DLFFmpeg -- "fail" --> LinkSys["Symlink system ffmpeg/ffprobe<br/>_link_or_replace()"]
-    LinkSys --> CheckBun
+    DLFFmpeg -- "fail" --> SystemPath["System PATH via shutil.which()"]
+    SystemPath --> CheckBun
 
     CheckBun{"bun in<br/>workspace/bin/?"}
     CheckBun -- "yes, real file" --> PATH

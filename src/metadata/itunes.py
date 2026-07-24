@@ -7,9 +7,7 @@ import urllib.parse
 from src.metadata.utils import _http_get_json
 
 
-def itunes_search(
-    title: str, artist: str, timeout: float
-) -> dict[str, str] | None:
+def itunes_search(title: str, artist: str, timeout: float) -> dict[str, str] | None:
     """Search iTunes API for track metadata."""
     query = urllib.parse.quote(f"{title} {artist}")
     url = f"https://itunes.apple.com/search?term={query}&entity=song&limit=1"

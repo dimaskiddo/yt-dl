@@ -26,6 +26,7 @@ def download_cover_image(
         from io import BytesIO
 
         from PIL import Image
+
         img = Image.open(BytesIO(data))
         if img.width > max_size or img.height > max_size:
             img.thumbnail((max_size, max_size), Image.LANCZOS)

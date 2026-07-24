@@ -22,20 +22,38 @@ class TrackMetadata(BaseModel):
     cover_mime: str = ""  # "image/jpeg" or "image/png"
 
 
-def _dispatch_provider(provider: str, title: str, artist: str, timeout: float, config: MetadataConfig) -> dict[str, str] | None:  # noqa: E501
+def _dispatch_provider(
+    provider: str, title: str, artist: str, timeout: float, config: MetadataConfig
+) -> dict[str, str] | None:  # noqa: E501
     """Call single metadata provider. Lazy-imports module on first call."""
     if provider == "itunes":
         from src.metadata.itunes import itunes_search
+
         return itunes_search(title, artist, timeout)
     if provider == "musicbrainz":
         from src.metadata.musicbrainz import musicbrainz_search
+
         return musicbrainz_search(title, artist, timeout)
     if provider == "spotify":
         from src.metadata.spotify import spotify_search
-        return spotify_search(title, artist, timeout, config.providers.spotify.client_id, config.providers.spotify.client_secret)
+
+        return spotify_search(
+            title,
+            artist,
+            timeout,
+            config.providers.spotify.client_id,
+            config.providers.spotify.client_secret,
+        )
     if provider == "lastfm":
         from src.metadata.lastfm import lastfm_search
-        return lastfm_search(title, artist, timeout, config.providers.lastfm.api_key, config.providers.lastfm.api_secret)
+
+        return lastfm_search(
+            title,
+            artist,
+            timeout,
+            config.providers.lastfm.api_key,
+            config.providers.lastfm.api_secret,
+        )
     logger.debug("Unknown metadata provider: {}", provider)
     return None
 
@@ -73,13 +91,16 @@ def _resolve_cover(
 ) -> None:
     """Resolve cover: yt-dlp thumbnail -> online result -> default fallback."""
     from src.metadata.cover import download_cover_image, load_default_cover
+
     if config.force_default_cover:
         try:
             fallback = load_default_cover(config.default_cover_path)
             if fallback:
                 meta.cover_data, meta.cover_mime = fallback
         except OSError:
-            logger.debug("Default cover image not found at {}", config.default_cover_path)
+            logger.debug(
+                "Default cover image not found at {}", config.default_cover_path
+            )
         return
     # Priority: yt-dlp thumbnail -> online search cover -> default
     thumbnail_url = str(ydl_info.get("thumbnail", ""))
@@ -110,6 +131,7 @@ def inject_metadata(
     """Extract, enrich, and inject ID3 tags into audio file. Non-fatal."""
     from src.metadata.tagger import tag_audio_file
     from src.metadata.ydl import extract_metadata_from_ydl
+
     try:
         meta = extract_metadata_from_ydl(ydl_info)
     except Exception:
@@ -118,7 +140,9 @@ def inject_metadata(
     online_cover_url = ""
     if config.online_search and meta.title:
         try:
-            enriched, online_cover_url = search_metadata_online(meta, config.online_timeout, config)
+            enriched, online_cover_url = search_metadata_online(
+                meta, config.online_timeout, config
+            )
             if enriched:
                 meta = enriched
                 logger.debug("Metadata enriched via online search")

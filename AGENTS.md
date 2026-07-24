@@ -33,7 +33,7 @@ Build a clean, robust, and low-spec optimized YouTube Downloader application. Du
 ### 2. Video Mode
 - **Resolution Options:** `360p`, `480p`, `720p`, `1080p`, `1440p` (Default: `720p`).
 - **Format Options:** `MP4` (Default).
-- **Quality Strategy:** yt-dlp downloads best video+audio and merges automatically. FFmpeg stream copies (no re-encode, zero quality loss).
+- **Quality Strategy:** yt-dlp downloads best video+audio and merges automatically. FFmpeg stream copies (zero quality loss).
 - **Output Directory Structure:** `workspace/videos/{VIDEO_ID_UPPERCASE}/{RESOLUTION_UPPERCASE}.{format}`
   *Example:* `workspace/videos/AKS7Y8P/1080P.mp4`
 
@@ -92,7 +92,7 @@ Build a clean, robust, and low-spec optimized YouTube Downloader application. Du
 - **Function design:** Max 40 lines. One function = one thing. Guard clauses, max 3 nesting levels. No boolean flags changing core behavior.
 - **Resources:** `with` blocks / `contextlib.contextmanager` for all open/close lifecycles.
 - **Async:** `asyncio.to_thread()` for offloading blocking from Gradio handlers.
-- **Toolchain:** `ruff`, `mypy --strict`. Configured in `pyproject.toml`.
+- **Toolchain:** `ruff check`, `ruff format`, `mypy --strict`. Configured in `pyproject.toml`.
 - **Docstrings:** Google-style (`Args:`, `Returns:`, `Raises:`). Comments explain *why*, not *what*.
 - **Naming:** modules `snake_case`, classes `PascalCase`, functions `verb_noun`, constants `SCREAMING_SNAKE`, private `_prefix`. Downloaded folders: `{VIDEO_ID_UPPERCASE}`.
 

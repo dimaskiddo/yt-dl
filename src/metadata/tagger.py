@@ -52,11 +52,7 @@ def _tag_aac(file_path: Path, meta: TrackMetadata) -> None:
     if meta.year:
         audio["\xa9day"] = meta.year
     if meta.cover_data and meta.cover_mime:
-        fmt = (
-            MP4Cover.FORMAT_JPEG
-            if "jpeg" in meta.cover_mime
-            else MP4Cover.FORMAT_PNG
-        )
+        fmt = MP4Cover.FORMAT_JPEG if "jpeg" in meta.cover_mime else MP4Cover.FORMAT_PNG
         audio["covr"] = [MP4Cover(meta.cover_data, imageformat=fmt)]
 
     audio.save()
@@ -82,16 +78,12 @@ def _tag_opus(file_path: Path, meta: TrackMetadata) -> None:
         pic.mime = meta.cover_mime
         pic.desc = "Cover"
         pic.data = meta.cover_data
-        audio["metadata_block_picture"] = base64.b64encode(pic.write()).decode(
-            "ascii"
-        )
+        audio["metadata_block_picture"] = base64.b64encode(pic.write()).decode("ascii")
 
     audio.save()
 
 
-def tag_audio_file(
-    file_path: Path, meta: TrackMetadata, audio_format: str
-) -> None:
+def tag_audio_file(file_path: Path, meta: TrackMetadata, audio_format: str) -> None:
     """Write metadata tags to audio file based on format.
 
     Args:
@@ -107,9 +99,7 @@ def tag_audio_file(
 
     tag_type = _tag_map().get(audio_format)
     if tag_type is None:
-        raise MetadataError(
-            f"Unsupported audio format for tagging: {audio_format}"
-        )
+        raise MetadataError(f"Unsupported audio format for tagging: {audio_format}")
 
     if tag_type == "mp3":
         _tag_mp3(file_path, meta)

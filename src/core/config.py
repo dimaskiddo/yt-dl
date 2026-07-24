@@ -105,9 +105,7 @@ class MetadataConfig(BaseModel):
     provider_order: list[str] = Field(
         default=["spotify", "musicbrainz", "itunes", "lastfm"]
     )
-    providers: MetadataProvidersConfig = Field(
-        default_factory=MetadataProvidersConfig
-    )
+    providers: MetadataProvidersConfig = Field(default_factory=MetadataProvidersConfig)
 
 
 class WorkspaceConfig(BaseModel):

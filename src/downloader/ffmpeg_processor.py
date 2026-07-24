@@ -111,7 +111,7 @@ def stream_copy_video(
     ]
 
     logger.info(
-        "Stream copying video for {} (no re-encode)...",
+        "Stream copying video for {}...",
         video_id.upper(),
     )
     _run_ffmpeg(cmd, timeout)

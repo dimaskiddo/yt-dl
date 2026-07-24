@@ -108,7 +108,8 @@ def run_purge_cycle(config: AppConfig) -> None:
     targets: list[tuple[Path, int, bool]] = [
         (config.workspace.audios, config.cleaner.retention.audio_days, False),
         (config.workspace.videos, config.cleaner.retention.video_days, False),
-        (config.workspace.tmp, config.cleaner.retention.tmp_days, True),
+        (GRADIO_TEMP_DIR, config.cleaner.retention.tmp_days, True),
+        (WORKSPACE_TMP / "serve", config.cleaner.retention.tmp_days, True),
     ]
 
     total_files = 0

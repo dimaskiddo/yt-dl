@@ -93,8 +93,6 @@ def build_ytdl_options(
         "extractor_args": {"youtube": ["player_client=ios,android,web"]},
         "overwrites": True,
         "ffmpeg_location": str(
-            get_ffmpeg_path(bin_dir).parent
-            if get_ffmpeg_path(bin_dir)
-            else bin_dir
+            get_ffmpeg_path(bin_dir).parent if get_ffmpeg_path(bin_dir) else bin_dir
         ),
     }

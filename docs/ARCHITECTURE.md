@@ -74,9 +74,9 @@ All runtime assets in `./workspace/`. OS temp dirs (`/tmp/`, `%TEMP%`) never use
 | `tmp/` | Download staging + Gradio temp files |
 | `logs/` | Rotating loguru logs (`app.log`) |
 
-**Boot:** `init_workspace()` creates all dirs. `ensure_ffmpeg()` downloads via static_ffmpeg (fallback: symlinks system ffmpeg/ffprobe). `ensure_bun()` downloads from GitHub — auto-detects musl libc (Alpine) for `-musl` variant. `setup_environment()` prepends `workspace/bin/` to PATH.
+**Boot:** `init_workspace()` creates all dirs. `ensure_ffmpeg()` downloads via static_ffmpeg (fallback: system PATH via `shutil.which`). `ensure_bun()` downloads from GitHub — auto-detects musl libc (Alpine) for `-musl` variant. `setup_environment()` prepends `workspace/bin/` to PATH.
 
-**Purge:** Hourly background thread via `start_purge_scheduler()`. Retention: `audio_days` / `video_days` / `tmp_days` from config (`0` = immediate, `-1` = skip). Protected: `bin/`, `logs/`. Guard: `ACTIVE_DOWNLOAD_EVENT` skips purge during active downloads.
+**Purge:** Hourly background thread via `start_purge_scheduler()`. Retention: `audio_days` / `video_days` / `tmp_days` from config (`0` = immediate, `-1` = skip). Protected: `bin/`, `logs/`. Guard: `ACTIVE_DOWNLOAD_EVENT` skips purge during active downloads. Only `tmp/gradio/` and `tmp/serve/` are purged — staging dirs (`tmp/{VIDEO_ID}/`) are untouched.
 
 ---
 
@@ -111,7 +111,7 @@ flowchart TD
     Encode --> Tag["inject_metadata()<br/>ID3 tags via mutagen<br/>yt-dlp metadata + online search + cover art"]
     Tag --> MoveAudio["Move → workspace/audios/{VIDEO_ID}/{BITRATE}.{format}"]
 
-    Mode -- "video" --> StreamCopy["stream_copy_video()<br/>FFmpeg stream copy (no re-encode)"]
+    Mode -- "video" --> StreamCopy["stream_copy_video()<br/>FFmpeg stream copy"]
     StreamCopy --> MoveVideo["Move → workspace/videos/{VIDEO_ID}/{RESOLUTION}.mp4"]
 
     MoveAudio --> Cleanup["Cleanup staging"]
@@ -119,10 +119,10 @@ flowchart TD
     Cleanup --> Done([Complete])
 ```
 
-All downloads stage in `workspace/tmp/{VIDEO_ID}/` first. After processing, final output moves to `workspace/audios/` or `workspace/videos/`. Staging cleaned up after each download.
+All downloads stage in `workspace/tmp/{VIDEO_ID}/` first. `ACTIVE_DOWNLOAD_EVENT` is set during processing to block the purge scheduler. After processing, output is verified on disk before moving to `workspace/audios/` or `workspace/videos/`. Staging cleaned up after each download.
 
 - **Audio:** Downloads `bestaudio` stream only (fast — no video). Re-encodes via FFmpeg to target format/bitrate. Supported: MP3 (`libmp3lame`), AAC (`aac`), OPUS (`libopus`). Default: 192K MP3.
-- **Video:** Downloads `bestvideo+bestaudio`, yt-dlp merges automatically. FFmpeg stream copies (no re-encode, zero quality loss, near-zero CPU). Resolutions: 360p, 480p, 720p (default), 1080p, 1440p. Format: MP4.
+- **Video:** Downloads `bestvideo+bestaudio`, yt-dlp merges automatically. FFmpeg stream copies (zero quality loss, near-zero CPU). Resolutions: 360p, 480p, 720p (default), 1080p, 1440p. Format: MP4.
 
 ---
 
@@ -132,10 +132,10 @@ All downloads stage in `workspace/tmp/{VIDEO_ID}/` first. After processing, fina
 flowchart TD
     Start([App startup]) --> CheckFFmpeg{"ffmpeg in<br/>workspace/bin/?"}
     CheckFFmpeg -- "yes, real file" --> CheckBun
-    CheckFFmpeg -- "no / symlink only" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy to workspace/bin/"]
+    CheckFFmpeg -- "no" --> DLFFmpeg["Download via static_ffmpeg PyPI<br/>copy to workspace/bin/"]
     DLFFmpeg -- "success" --> CheckBun
-    DLFFmpeg -- "fail" --> LinkSys["Symlink system ffmpeg/ffprobe<br/>_link_or_replace()"]
-    LinkSys --> CheckBun
+    DLFFmpeg -- "fail" --> SystemPath["System PATH via shutil.which()"]
+    SystemPath --> CheckBun
 
     CheckBun{"bun in<br/>workspace/bin/?"}
     CheckBun -- "yes, real file" --> SetupPath
@@ -149,7 +149,7 @@ flowchart TD
     SetupPath --> Ready([Binaries ready])
 ```
 
-FFmpeg: downloaded via `static_ffmpeg` PyPI package. Fallback: symlinks system ffmpeg/ffprobe (tracks OS package updates). Bun: downloaded from GitHub releases (platform-specific zip). Auto-detects musl libc — downloads `-musl` variant on Alpine. Both live in `workspace/bin/`.
+FFmpeg: downloaded via `static_ffmpeg` PyPI package. Fallback: system ffmpeg/ffprobe via `shutil.which()`. Bun: downloaded from GitHub releases (platform-specific zip). Auto-detects musl libc — downloads `-musl` variant on Alpine. Both live in `workspace/bin/`.
 
 ---
 
@@ -163,17 +163,24 @@ flowchart TD
 
     Scheduler --> Active["Active: downloads accumulate<br/>workspace/audios/ + videos/"]
     Active --> Purge{"Purge cycle<br/>(hourly)"}
-    Purge -- "active download" --> Skip["Skip (guard flag)"]
+    Purge -- "active download" --> Skip["Skip (ACTIVE_DOWNLOAD_EVENT)"]
     Skip --> Active
-    Purge -- "no active download" --> CheckAge{"Oldest file<br/>> retention days?"}
-    CheckAge -- "yes" --> Delete["Delete video dir"]
-    CheckAge -- "no" --> Active
-    Delete --> Active
+    Purge -- "no active download" --> Targets{"Purge targets"}
+    Targets --> CheckAgeAud{"audios — Oldest file<br/>> retention days?"}
+    Targets --> CheckAgeVid{"videos — Oldest file<br/>> retention days?"}
+    Targets --> PurgeGradio["tmp/gradio/ — delete media files"]
+    Targets --> PurgeServe["tmp/serve/ — delete media files"]
+    CheckAgeAud -- "yes" --> DeleteAudio["Delete audio dir"]
+    CheckAgeVid -- "yes" --> DeleteVideo["Delete video dir"]
+    CheckAgeAud -- "no" --> Active
+    CheckAgeVid -- "no" --> Active
+    DeleteAudio --> Active
+    DeleteVideo --> Active
 
     Shutdown(["Shutdown"]) --> FinalCleanup["atexit + SIGINT/SIGTERM<br/>wipe workspace/tmp/"]
 ```
 
-Startup: wipe `workspace/tmp/` via `cleanup_tmp()`. Shutdown: `atexit` + signal handlers call `cleanup_tmp()`. Background scheduler: `run_purge_cycle()` runs hourly. Retention: `audio_days` / `video_days` / `tmp_days` (`0` = immediate, `-1` = skip). Protected: `bin/`, `logs/`. Guard: `ACTIVE_DOWNLOAD_EVENT` skips purge during active downloads.
+Startup: wipe `workspace/tmp/` via `cleanup_tmp()`. Shutdown: `atexit` + signal handlers call `cleanup_tmp()`. Background scheduler: `run_purge_cycle()` runs hourly. Purge targets: `audios/` and `videos/` (by age), `tmp/gradio/` and `tmp/serve/` (by age). Staging dirs (`tmp/{VIDEO_ID}/`) are never purged. Protected: `bin/`, `logs/`. Guard: `ACTIVE_DOWNLOAD_EVENT` skips purge during active downloads.
 
 ---
 

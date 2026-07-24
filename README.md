@@ -13,7 +13,7 @@ It works on **Windows, macOS, Linux, and WSL2**, and is built to run well even o
 *   **🏷️ Automatic ID3 tags:** Audio downloads get title, artist, album, year, and cover art injected automatically. Metadata sourced from yt-dlp + online search (Spotify, MusicBrainz, iTunes, Last.fm).
 *   **💻 Two ways to use it:** A browser-based interface or terminal commands.
 *   **🧹 Automatic cleanup:** Hourly background purge deletes expired downloads. Manual cache controls available.
-*   **⚡ Fast — downloads only what you need:** Audio mode skips the video stream entirely. Video mode uses best-quality source + stream copy (no re-encode, zero quality loss).
+*   **⚡ Fast — downloads only what you need:** Audio mode skips the video stream entirely. Video mode uses best-quality source + stream copy (zero quality loss).
 *   **📁 Portable workspace:** All downloads and tools live inside a single `workspace/` folder. Move it, back it up, or delete it — everything is self-contained.
 *   **⚙️ One settings file:** All options in a single `config.yaml`.
 
